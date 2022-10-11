@@ -1,0 +1,121 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Values.secret.nameZookeeper }}
+type: Opaque
+data:
+  {{- range $key, $val := .Values.envZookeeper.secret }}
+  {{ $key }}: {{ $val | b64enc }}
+  {{- end}}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Values.secret.nameKafka }}
+type: Opaque
+data:
+  {{- range $key, $val := .Values.envKafka.secret }}
+  {{ $key }}: {{ $val | b64enc }}
+  {{- end}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.zookeeperName }}
+  labels:
+    app: {{ .Values.zookeeperName }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.zookeeperName }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.zookeeperName }}
+    spec:
+      containers:
+      - name: {{ .Values.zookeeperName }}
+        image: "{{ .Values.zookeeperImageName }}:{{ .Values.zookeeperImageVersion }}"
+        resources:
+          limits:
+            memory: "768M"
+            cpu: "0.5"
+          requests:
+            memory: "512M"
+            cpu: "0.5"
+        env:
+          {{- include "helpers.list-envZookeeperApp-variables" . | indent 10 }}
+        ports:
+        - containerPort: 2181
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.zookeeperServiceName }}
+  labels:
+    app: {{ .Values.zookeeperServiceName }}
+spec:
+  ports:
+  - port: 2181
+    protocol: TCP
+  selector:
+    app: {{ .Values.zookeeperName }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.kafkaName }}
+  labels:
+    app: {{ .Values.kafkaName }}    
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.kafkaName }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.kafkaName }}
+    spec:
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+        fsGroup: 0
+      containers:
+      - name: {{ .Values.kafkaName }}
+        image: "{{ .Values.kafkaImageName }}:{{ .Values.kafkaImageVersion }}" 
+        imagePullPolicy: Always
+        resources:
+          limits:
+            memory: "1G"
+            cpu: "1.5"
+          requests:
+            memory: "768M"
+            cpu: "1.0"
+        env:
+          {{- include "helpers.list-envKafkaApp-variables" . | indent 10 }}
+        ports:
+        - containerPort: 9092
+#        volumeMounts:
+#        - name: hostvol
+#          mountPath: /bitnami/kafka
+#      volumes:
+#      - name: hostvol
+#        persistentVolumeClaim:
+#          claimName: {{ .Values.volumeClaimName }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.kafkaServiceName }} 
+  labels:
+    run: {{ .Values.kafkaServiceName }} 
+spec:
+  type: NodePort
+  ports:
+  - port: 9092
+    nodePort: 9092
+    protocol: TCP
+  selector:
+    app: {{ .Values.kafkaName }}

@@ -1,0 +1,19 @@
+webAppName: angularandspring
+dbName: mongodb
+webImageName: angular2guy/angularandspring
+webImageVersion: latest
+dbImageName: mongo
+dbImageVersion: 4.4
+volumeClaimName: mongo-pv-claim
+persistentVolumeName: mongo-pv-volume
+
+secret:
+  name: app-env-secret
+
+envApp:
+  normal: 
+    MONGODB_HOST: mongodb
+    CPU_CONSTRAINT: true
+    SHUTDOWN_PHASE: 10s
+  secret:
+    JWTTOKEN_SECRET: secret-key1234567890abcdefghijklmnopqrstuvwxyz
